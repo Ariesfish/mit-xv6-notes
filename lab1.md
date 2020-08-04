@@ -132,7 +132,7 @@ The target architecture is assumed to be i8086
 
 在8086的实模式下最高可访问的物理地址为 `0xfffff`
 
-BIOS会被加载到1M地址空间的最后64K字节 `0xf0000 ~ 0xfffff`，这里加载后的第一条命令 `0xffff0: ljmp $0xf000,$0xe05b` 即是跳转到BIOS前部的 `0xfe05b` 处开始执行
+BIOS会被加载到1M地址空间的最后 `64K字节` `0xf0000 ~ 0xfffff`，这里加载后的第一条命令 `0xffff0: ljmp $0xf000,$0xe05b` 即是跳转到BIOS前部的 `0xfe05b` 处开始执行
 
 > **练习2**
 >
@@ -144,7 +144,11 @@ BIOS会设置一个中断描述符表，初始化VGA显示界面和PCI总线等�
 
 BIOS将512个字节扇区(光驱的话是2048个字节)的 `Boot Loader` 加载到物理内存的 `0x7c00` 地址，[这里](https://www.glamenv-septzen.net/en/view/6)一篇文章讲述了魔数 `0x7c00` 的由来
 
-Boot Loader开始执行后首先会从实模式切换到 32-bit 的保护模式(protected mode) 以使用更大的内存地址空间
+`Boot Loader` 由一个汇编源文件 `boot/boot.S` 和一个C源文件 `boot/main.c` 组成。开始执行后首先会将 CPU 从实模式切换到 32-bit 的保护模式(protected mode) 以使用更大的内存地址空间
+
+- cli (clear interrupt, disable interrupts)
+- cld (clear direction flag, string operations increment)
+  - df: 方向标志位。在串处理指令中，控制每次操作后si，di的增减(df=0，每次操作后si、di递增; df=1，每次操作后si、di递减)
 
 **Note-1**: *80286扩展到24-bit地址总线，最大可访问16M的物理地址空间；80386之后采用32-bit地址总线，最大可访问4G的物理地址空间。它们采用了不同于8086的分段机制*
 
@@ -160,11 +164,19 @@ Boot Loader开始执行后首先会从实模式切换到 32-bit 的保护模式(
 
 > At what point does the processor start executing 32-bit code? What exactly causes the switch from 16- to 32-bit mode?
 
+- lgdt gdtdesc: 加载全局描述符表
+- cr0: control register。cr0包含了6个预定义标志，第0位是保护允许位PE(Protedted Enable), 用于启动保护模式, 如果 PE=1 则保护模式启动, 如果 PE=0 则在实模式下运行。
+- ljmp $PROT_MODE_CSEG, $protcseg
+
 从 `.code32 protcseg:` 开始执行32-bit代码，在此之前通过设置 `GDT(lgdtw 0x7c64)` 和将 `CR0` 控制寄存器的保护模式Flag设为有效来完成16-bit到32-bit的切换
+
+PROT_MODE_CSEG=0x8, 指定了CS段选择符, 指向GDT中的段描述符。
 
 > What is the last instruction of the boot loader executed, and what is the first instruction of the kernel it just loaded?
 
 bool loader最后执行的指令是 `call *0x10018`(0x10000 + 0x18: ELFHDR->e_entry)，kernel被加载后第一个执行的指令 `0x10000c: movw $0x1234,0x472`，加载之前会做一个entry地址的转换
+
+
 
 > How does the boot loader decide how many sectors it must read in order to fetch the entire kernel from disk? Where does it find this information?
 
@@ -174,7 +186,7 @@ bool loader最后执行的指令是 `call *0x10018`(0x10000 + 0x18: ELFHDR->e_en
 
 > **练习4**
 >
-> 学习C语言，特别是指针概念()
+> 学习C语言，特别是指针概念[pointer.c](res/pointers.c)
 
 查看ELF文件各个section的信息
 
@@ -183,8 +195,9 @@ bool loader最后执行的指令是 `call *0x10018`(0x10000 + 0x18: ELFHDR->e_en
 ```
 
 - .text: 程序的可执行代码
-- .rodata: 只读数据，如字符串等
+- .rodata: 只读数据，如字符串常量等
 - .data: 已初始化的数据，如全局变量
+- .bss: 存放未初始化的变量，但是ELF中只需要记录.bss的起始地址和长度，loader和程序必须自己将.bss段清零
 
 查看程序头信息
 
@@ -206,7 +219,7 @@ Boot loader会加载失败，最后产生 SIGTRAP 中断
 >
 > 在 boot loader 加载后以及加载 Kernel 时查看 0x100000 地址有什么变化
 
-一开始时是 0x0000, 在加载 kernel 后其中有了内容
+一开始时是 0x0000, 在加载 kernel 后其中有了内容, 调试时用 `x/8x 0x100000` 查看内存内容
 
 ## 内核
 
