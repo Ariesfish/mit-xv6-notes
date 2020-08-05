@@ -180,7 +180,7 @@ bool loader最后执行的指令是 `call *0x10018`(0x10000 + 0x18: ELFHDR->e_en
 
 > How does the boot loader decide how many sectors it must read in order to fetch the entire kernel from disk? Where does it find this information?
 
-从 ELF头部中的 `ELFHDR + ELFHDR->e_phoff` 指向的 `Proghdr` 的 `p_memsz` 和 `p_offset` 中获得信息
+从 [ELF](https://wiki.osdev.org/ELF) 头部中的 `ELFHDR + ELFHDR->e_phoff` 指向的 `Proghdr` 的 `p_memsz` 和 `p_offset` 中获得信息
 
 ### 加载内核
 
