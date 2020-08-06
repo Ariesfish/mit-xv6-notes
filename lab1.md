@@ -155,6 +155,8 @@ BIOS将512个字节扇区(光驱的话是2048个字节)的 `Boot Loader` 加载�
 
 **Note-2**: *在80286之后的CPU上，为了防止实模式下地址回折的问题，设计了A20线的与门开关，boot/boot.S中可以看到进入保护模式前开启A20的操作*
 
+**Note-3**: 关于 inb/outb IO端口指令, 操作的[外部设备](http://bochs.sourceforge.net/techspec/PORTS.LST)
+
 > **练习3**
 >
 > 学习更多的GDB命令，在 `0x7c00` 处设置断点，结合 `boot/boot.S` 汇编代码和反汇编之后 `obj/boot/boot.asm` 跟踪 `boot loader` 的加载过程
@@ -169,7 +171,7 @@ BIOS将512个字节扇区(光驱的话是2048个字节)的 `Boot Loader` 加载�
 - cr0: control register。cr0包含了6个预定义标志，第0位是保护允许位PE(Protedted Enable), 用于启动保护模式, 如果 PE=1 则保护模式启动, 如果 PE=0 则在实模式下运行。
 - ljmp $PROT_MODE_CSEG, $protcseg
 
-从 `.code32 protcseg:` 开始执行32-bit代码，在此之前通过设置 `GDT(lgdtw 0x7c64)` 和将 `CR0` 控制寄存器的保护模式Flag设为有效来完成16-bit到32-bit的切换
+从 `.code32 protcseg:` 开始执行32-bit代码，在此之前通过设置 `GDT(lgdtw 0x7c64)` 和将 `CR0` 控制寄存器的保护模式Flag设为有效来完成16-bit到32-bit的切换，此时CPU工作在保护模式下
 
 PROT_MODE_CSEG=0x8, 指定了CS段选择符, 指向GDT中的段描述符。
 
@@ -179,7 +181,7 @@ bool loader最后执行的指令是 `call *0x10018`(0x10000 + 0x18: ELFHDR->e_en
 
 > How does the boot loader decide how many sectors it must read in order to fetch the entire kernel from disk? Where does it find this information?
 
-从 `ELFHDR + ELFHDR->e_phoff` 指向的 `Proghdr` 的 `p_memsz` 和 `p_offset` 中获得信息
+从 [ELF](https://wiki.osdev.org/ELF) 头部中的 `ELFHDR + ELFHDR->e_phoff` 指向的 `Proghdr` 的 `p_memsz` 和 `p_offset` 中获得信息
 
 ### 加载内核
 
