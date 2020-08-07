@@ -279,6 +279,10 @@ start address 0x0010000c
 0x100010: 0x34000004 0x2000b812 0x220f0011 0xc0200fd8
 ```
 
+这条语句的作用就是开启分页模式, 在执行这条语句之前, 所有的线性地址直接等于物理地址, 执行之后, 线性地址经过 `MMU` 的映射到物理地址
+
+所以执行之前 `0x100000` 处为加载的内核代码, `0xf0100000` 处为空; 执行之后 `0x100000` 和 `0xf0100000` 都映射到物理内存 `0x100000`, 所以它们内容相同。
+
 可以看到 `0xf0100000` 完成了 `0x00100000` 的映射, 下一条指令 `0x100028: mov $0xf010002f,%eax` 可以完成正常的取址操作
 
 > `cr3` 是页目录基址寄存器, 保存页目录表的物理地址, 页目录表以4KB对齐，因此它的地址的低12位总为0
@@ -367,4 +371,29 @@ cprintf("x=%d y=%d", 3);
 TODO
 
 ### 栈
+
+> **练习9**
+>
+> Determine where the kernel initializes its stack, and exactly where in memory its stack is located. How does the kernel reserve space for its stack? And at which "end" of this reserved area is the stack pointer initialized to point to?
+
+kern/entry.S 第76~77行 `movl $(bootstacktop),%esp` 初始化栈, 调试可以看到栈顶指针 `esp` 初始化为 `0xf0110000` `(0x100034: mov 0xf0110000,%esp)`
+
+```asm
+.data
+###################################################################
+# boot stack
+###################################################################
+    .p2align    PGSHIFT     # force page alignment
+    .globl      bootstack
+bootstack:
+    .space      KSTKSIZE
+    .globl      bootstacktop
+bootstacktop:
+```
+
+设置栈的方法是在 `.data` 数据段预留一段空间, 定义在 `memlayout.h` 中 `KSTKSIZE (8*4096(PGSIZE))`, 大小为 32K. 栈的位置就是 `0xf0110000 ~ 0xf0118000`
+
+> **练习10**
+>
+> To become familiar with the C calling conventions on the x86, find the address of the test_backtrace function in obj/kern/kernel.asm, set a breakpoint there, and examine what happens each time it gets called after the kernel starts. How many 32-bit words does each recursive nesting level of test_backtrace push on the stack, and what are those words?
 
